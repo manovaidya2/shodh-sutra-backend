@@ -5,6 +5,7 @@
   dotenv.config();
 import consultationRoutes from "./routes/consultationRoutes.js";
 import galleryRoutes from "./routes/galleryRoutes.js";
+import shodhSutraRoutes from "./routes/shodhSutraRoutes.js";
 
 
   const app = express();
@@ -28,7 +29,7 @@ import galleryRoutes from "./routes/galleryRoutes.js";
 
  //use routes
 app.use("/api", consultationRoutes);
-
+app.use("/api/shodh-sutra", shodhSutraRoutes);
 app.use("/api/gallery", galleryRoutes);
 
   app.get("/api/health", (req, res) => res.json({ status: "OK", mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected" }));
