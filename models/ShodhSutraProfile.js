@@ -75,6 +75,26 @@ const ShodhSutraSchema = new mongoose.Schema(
       experienceYears: String,
     },
 
+    research: {
+      totalPapers: String,
+      otherUniversity: String,
+      session: String,
+      existingResearch: String,
+      seminars: String,
+      fields: String,
+      documents: [
+        {
+          filename: String,
+          originalName: String,
+          path: String,
+          size: Number,
+          mimeType: String,
+          url: String,
+          uploadedAt: { type: Date, default: Date.now }
+        }
+      ]
+    },
+
     // Uploaded files
     uploadedFiles: [
       {

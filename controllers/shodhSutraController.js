@@ -4,47 +4,67 @@ import fs from 'fs';
 import ShodhSutraProfile from "../models/ShodhSutraProfile.js";
 
 // Ensure uploads directory exists
-const uploadDir = 'uploads/marksheets';
+const uploadDir = 'uploads/';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for file upload
+// Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadDir);
+    // Store files in different folders based on field name
+    if (file.fieldname === 'marksheets') {
+      const dir = 'uploads/marksheets/';
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    } else if (file.fieldname === 'researchPapers') {
+      const dir = 'uploads/research/';
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    }
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, 'marksheet-' + uniqueSuffix + ext);
+    const filename = file.fieldname + '-' + uniqueSuffix + ext;
+    console.log(`Saving file: ${filename} for field: ${file.fieldname}`);
+    cb(null, filename);
   }
 });
 
-// Create multer instance
+// File filter function
+const fileFilter = (req, file, cb) => {
+  const filetypes = /pdf|jpg|jpeg|png/;
+  const mimetype = filetypes.test(file.mimetype);
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  }
+  cb(new Error('Only PDF, JPG, JPEG, PNG files are allowed'));
+};
+
+// Create multer instance with multiple field support
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: function (req, file, cb) {
-    const filetypes = /pdf|jpg|jpeg|png/;
-    const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Only PDF, JPG, JPEG, PNG files are allowed'));
-  }
+  limits: { 
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 10 // Total max files
+  },
+  fileFilter: fileFilter
 });
 
-// Middleware for file upload
-const uploadMiddleware = upload.array('marksheets', 5); // Max 5 files
+// Use fields middleware to accept multiple field types
+const uploadMiddleware = upload.fields([
+  { name: 'marksheets', maxCount: 5 },
+  { name: 'researchPapers', maxCount: 5 }
+]);
 
 export const submitProfile = async (req, res) => {
   try {
     console.log("Starting profile submission...");
     
-    // First, handle the file upload using multer
+    // Handle the file upload using multer
     uploadMiddleware(req, res, async function(err) {
       if (err) {
         console.error("Multer error:", err);
@@ -54,11 +74,13 @@ export const submitProfile = async (req, res) => {
         });
       }
       
-      console.log("Received form data:", req.body);
-      console.log("Received files:", req.files ? req.files.length : 0);
+      console.log("Received form data fields:", Object.keys(req.body));
+      console.log("Received files:", {
+        marksheets: req.files?.marksheets?.length || 0,
+        researchPapers: req.files?.researchPapers?.length || 0
+      });
       
-      // IMPORTANT: FormData से आने वाले fields को parse करें
-      // ये fields req.body में directly available होंगे
+      // Parse form data
       const {
         fullName,
         email,
@@ -106,6 +128,12 @@ export const submitProfile = async (req, res) => {
         academicDesignation,
         academicSubjects,
         academicExperience,
+        totalResearchPapers,
+        otherUniversityResearch,
+        otherUniversitySession,
+        existingResearch,
+        seminarsAttended,
+        researchFields,
         professionalGoals,
         blockers,
         underUtilised,
@@ -128,33 +156,50 @@ export const submitProfile = async (req, res) => {
       } = req.body;
 
       // Validate required fields
-      if (!email || !mobile || !fullName) {
+      if (!email || !mobile || !fullName || !professionalStatus) {
         return res.status(400).json({
           success: false,
-          message: "Name, Email and Mobile are required fields",
+          message: "Name, Email, Mobile and Professional Status are required fields",
         });
       }
 
-      // Prepare uploaded files data
+      // Prepare research documents
+      const researchDocs = [];
+      if (req.files?.researchPapers) {
+        req.files.researchPapers.forEach(file => {
+          researchDocs.push({
+            filename: file.filename,
+            originalName: file.originalname,
+            path: file.path,
+            size: file.size,
+            mimeType: file.mimetype,
+            url: `/uploads/research/${file.filename}`,
+            uploadedAt: new Date()
+          });
+        });
+      }
+
+      // Prepare uploaded marksheets/certificates
       const uploadedFiles = [];
-      if (req.files && req.files.length > 0) {
-        req.files.forEach(file => {
+      if (req.files?.marksheets) {
+        req.files.marksheets.forEach(file => {
           uploadedFiles.push({
             filename: file.filename,
             originalName: file.originalname,
             mimeType: file.mimetype,
             size: file.size,
             path: file.path,
-            url: `/uploads/marksheets/${file.filename}`
+            url: `/uploads/marksheets/${file.filename}`,
+            uploadedAt: new Date()
           });
         });
       }
 
-      // Prepare profile data - सीधे fields use करें
+      // Prepare profile data
       const profileData = {
-        fullName: fullName,
-        email: email,
-        mobile: mobile,
+        fullName: fullName || "",
+        email: email || "",
+        mobile: mobile || "",
         cityCountry: cityCountry || "",
         age: age || "",
 
@@ -233,6 +278,16 @@ export const submitProfile = async (req, res) => {
           }
         }),
 
+        research: {
+          totalPapers: totalResearchPapers || "",
+          otherUniversity: otherUniversityResearch || "",
+          session: otherUniversitySession || "",
+          existingResearch: existingResearch || "",
+          seminars: seminarsAttended || "",
+          fields: researchFields || "",
+          documents: researchDocs
+        },
+
         // Uploaded files
         uploadedFiles: uploadedFiles,
 
@@ -273,9 +328,14 @@ export const submitProfile = async (req, res) => {
           fears: fears || "",
           honestAdvice: honestAdvice || "",
         },
+
+        // Metadata
+        formStatus: 'submitted',
+        submissionIp: req.ip,
+        userAgent: req.get('User-Agent')
       };
 
-      console.log("Profile data to save:", JSON.stringify(profileData, null, 2));
+      console.log("Saving profile to database...");
 
       try {
         const profile = new ShodhSutraProfile(profileData);
@@ -291,7 +351,8 @@ export const submitProfile = async (req, res) => {
             fullName: profile.fullName,
             email: profile.email,
             professionalStatus: profile.professionalStatus,
-            uploadedFiles: profile.uploadedFiles.length,
+            marksheets: profile.uploadedFiles.length,
+            researchPapers: profile.research?.documents?.length || 0,
             submittedAt: profile.createdAt
           }
         });
@@ -323,13 +384,26 @@ export const submitProfile = async (req, res) => {
   }
 };
 
-// Optional: Add a GET endpoint to fetch all profiles
+// Get all profiles with pagination
 export const getProfiles = async (req, res) => {
   try {
-    const profiles = await ShodhSutraProfile.find().sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const profiles = await ShodhSutraProfile.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await ShodhSutraProfile.countDocuments();
+
     res.status(200).json({
       success: true,
       count: profiles.length,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
       data: profiles
     });
   } catch (error) {
