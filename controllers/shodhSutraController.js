@@ -288,6 +288,7 @@ export const submitProfile = async (req, res) => {
           documents: researchDocs
         },
 
+        
         // Uploaded files
         uploadedFiles: uploadedFiles,
 
