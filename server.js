@@ -7,6 +7,7 @@
     import galleryRoutes from "./routes/galleryRoutes.js";
     import shodhSutraRoutes from "./routes/shodhSutraRoutes.js";
     import admissionPartnerRoutes from "./routes/admissionPartnerRoutes.js";
+    import mentorRoutes from "./routes/mentorRoutes.js";
 
 
       const app = express();
@@ -33,6 +34,7 @@
     app.use("/api/shodh-sutra", shodhSutraRoutes);
     app.use("/api/gallery", galleryRoutes);
     app.use("/api/admission-partner", admissionPartnerRoutes);
+    app.use("/api/mentor", mentorRoutes);
 
 
 
