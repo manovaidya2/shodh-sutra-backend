@@ -1,14 +1,16 @@
-      import express from "express";
-      import mongoose from "mongoose";
-      import cors from "cors";
-      import dotenv from "dotenv";
-      dotenv.config();
-    import consultationRoutes from "./routes/consultationRoutes.js";
-    import galleryRoutes from "./routes/galleryRoutes.js";
-    import shodhSutraRoutes from "./routes/shodhSutraRoutes.js";
-    import admissionPartnerRoutes from "./routes/admissionPartnerRoutes.js";
-    import mentorRoutes from "./routes/mentorRoutes.js";
-
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
+import consultationRoutes from "./routes/consultationRoutes.js";
+import galleryRoutes from "./routes/galleryRoutes.js";
+import shodhSutraRoutes from "./routes/shodhSutraRoutes.js";
+import admissionPartnerRoutes from "./routes/admissionPartnerRoutes.js";
+import mentorRoutes from "./routes/mentorRoutes.js";
+import scholarshipRoutes from "./routes/scholarshipRoutes.js";
+import phdAdmissionRoutes from "./routes/phdRoutes.js";
+import entranceExamRoutes from "./routes/commonEntranceExamRoutes.js";
 
 const app = express();
 
@@ -30,18 +32,23 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err.message));
 
-    //use routes
-    app.use("/api", consultationRoutes);
-    app.use("/api/shodh-sutra", shodhSutraRoutes);
-    app.use("/api/gallery", galleryRoutes);
-    app.use("/api/admission-partner", admissionPartnerRoutes);
-    app.use("/api/mentor", mentorRoutes);
+//use routes
+app.use("/api", consultationRoutes);
+app.use("/api/shodh-sutra", shodhSutraRoutes);
+app.use("/api/gallery", galleryRoutes);
+app.use("/api/admission-partner", admissionPartnerRoutes);
+app.use("/api/mentor", mentorRoutes);
+app.use("/api/scholarship", scholarshipRoutes);
+app.use("/api/phd-admission", phdAdmissionRoutes);
+app.use("/api/entrance-exam", entranceExamRoutes);
 
-
-
-
-
-      app.get("/api/health", (req, res) => res.json({ status: "OK", mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected" }));
+app.get("/api/health", (req, res) =>
+  res.json({
+    status: "OK",
+    mongodb:
+      mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
+  }),
+);
 
 app.use((err, req, res, next) => {
   console.error("❌ ERROR:", err.message);
